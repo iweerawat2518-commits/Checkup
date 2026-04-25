@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกผล LAB รพ.สต. - Smart Health Informatics</title>
+    
+    <!-- ใช้ Tailwind CSS สำหรับ UI ที่สวยงาม ทันสมัย และ Responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- ใช้ FontAwesome สำหรับไอคอน -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- ใช้ SweetAlert2 สำหรับแจ้งเตือนที่สวยงาม -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- ใช้ Chart.js สำหรับทำกราฟแดชบอร์ด -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- ตั้งค่า Google Fonts (Sarabun) เพื่อให้อ่านภาษาไทยได้ง่ายและเป็นทางการ -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f0fdfa; /* สีฟ้า-เขียว อ่อนๆ ธีมการแพทย์ */
+        }
+        
+        /* Custom Input Styles */
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Color Coding Classes */
+        .status-normal { background-color: #dcfce7; border-color: #22c55e; color: #166534; }
+        .status-low { background-color: #fef08a; border-color: #eab308; color: #854d0e; }
+        .status-high { background-color: #fee2e2; border-color: #ef4444; color: #991b1b; }
+
+        /* Card Hover Effect */
+        .lab-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .lab-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-notes-medical text-2xl mr-3"></i>
+                    <span class="font-bold text-xl">Smart LAB รพ.สต.บึงเนียม</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="switchTab('form')" id="btn-tab-form" class="px-4 py-2 rounded-lg bg-blue-700 font-semibold transition hover:bg-blue-800">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i> ฟอร์มบันทึก
+                    </button>
+                    <button onclick="switchTab('dashboard')" id="btn-tab-dashboard" class="px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium text-blue-100">
+                        <i class="fa-solid fa-chart-pie mr-1"></i> แดชบอร์ด
+                    </button>
+                    <!-- ปุ่ม AI วิเคราะห์รายบุคคล -->
+                    <button onclick="switchTab('ai')" id="btn-tab-ai" class="px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium text-blue-100">
+                        <i class="fa-solid fa-robot mr-1"></i> AI วิเคราะห์
+                    </button>
+                    <!-- ปุ่มตั้งค่า API URL -->
+                    <button onclick="setApiUrl()" class="px-3 py-2 rounded-lg hover:bg-blue-700 transition text-blue-200" title="ตั้งค่าการเชื่อมต่อ">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- ======================= TAB: FORM ======================= -->
+        <div id="tab-form">
+            <div class="mb-6 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-blue-900">บันทึกผลการตรวจทางห้องปฏิบัติการ</h1>
+                    <p class="text-slate-500 mt-1">กรอกข้อมูลผู้ป่วยและผล LAB เพื่อประเมินความเสี่ยงและสรุปผลด้วย AI</p>
+                </div>
+                <button type="button" onclick="clearForm()" class="text-slate-500 hover:text-red-500 transition">
+                    <i class="fa-solid fa-eraser"></i> ล้างฟอร์ม
+                </button>
+            </div>
+
+            <form id="labForm" class="space-y-6" onsubmit="submitForm(event)">
+                
+                <!-- Section 1: General Info -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                    <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-regular fa-id-card mr-2"></i>ข้อมูลทั่วไป (General Info)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="form-label">HN / CID <span class="text-red-500">*</span></label>
+                            <input type="text" id="hn" required class="form-input" placeholder="เลขประจำตัว">
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="form-label">ชื่อ - นามสกุล <span class="text-red-500">*</span></label>
+                            <input type="text" id="name" required class="form-input" placeholder="นาย/นาง/นางสาว...">
+                        </div>
+                        <div>
+                            <label class="form-label">เพศ <span class="text-red-500">*</span></label>
+                            <select id="sex" required class="form-input" onchange="calculateEGFR()">
+                                <option value="">เลือกเพศ...</option>
+                                <option value="Male">ชาย</option>
+                                <option value="Female">หญิง</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">อายุ (ปี) <span class="text-red-500">*</span></label>
+                            <input type="number" id="age" required min="1" max="120" class="form-input" placeholder="อายุ" oninput="calculateEGFR()">
+                        </div>
+                        <div>
+                            <label class="form-label">น้ำหนัก (กก.)</label>
+                            <input type="number" id="weight" step="0.1" class="form-input" placeholder="เช่น 65.5" oninput="calculateBMI()">
+                        </div>
+                        <div>
+                            <label class="form-label">ส่วนสูง (ซม.)</label>
+                            <input type="number" id="height" step="1" class="form-input" placeholder="เช่น 165" oninput="calculateBMI()">
+                        </div>
+                        <div>
+                            <label class="form-label">BMI (คำนวณอัตโนมัติ)</label>
+                            <input type="text" id="bmi" readonly class="form-input bg-slate-100 font-bold text-center" placeholder="-">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <!-- Section: Blood Sugar -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                        <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-solid fa-cubes-stacked mr-2"></i>น้ำตาลในเลือด (Blood Sugar)</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label" title="ปกติ: 70-99, เสี่ยง: 100-125, เบาหวาน: >= 126">FBS (mg/dL)</label>
+                                <input type="number" id="fbs" step="1" class="form-input check-range" data-type="fbs" placeholder="ค่าน้ำตาล">
+                            </div>
+                            <div>
+                                <label class="form-label" title="ปกติ: < 5.7, เสี่ยง: 5.7-6.4, เบาหวาน: >= 6.5">HbA1c (%)</label>
+                                <input type="number" id="hba1c" step="0.1" class="form-input check-range" data-type="hba1c" placeholder="น้ำตาลสะสม">
+                            </div>
+                        </div>
+                        <div id="alert-dm" class="mt-3 text-sm text-red-600 hidden bg-red-50 p-2 rounded border border-red-200">
+                            <i class="fa-solid fa-triangle-exclamation"></i> <strong>แจ้งเตือน:</strong> ผู้ป่วยมีความเสี่ยงเป็นโรคเบาหวาน (FBS ≥ 126 หรือ HbA1c ≥ 6.5)
+                        </div>
+                    </div>
+
+                    <!-- Section: Lipid Profile -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                        <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-solid fa-droplet mr-2"></i>ไขมันในเลือด (Lipid Profile)</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label">Cholesterol (< 200)</label>
+                                <input type="number" id="cholesterol" class="form-input check-range" data-type="chol" placeholder="คอเลสเตอรอล">
+                            </div>
+                            <div>
+                                <label class="form-label">Triglyceride (< 150)</label>
+                                <input type="number" id="tg" class="form-input check-range" data-type="tg" placeholder="ไตรกลีเซอไรด์">
+                            </div>
+                            <div>
+                                <label class="form-label">HDL (ชาย >40, หญิง >50)</label>
+                                <input type="number" id="hdl" class="form-input check-range" data-type="hdl" placeholder="ไขมันดี">
+                            </div>
+                            <div>
+                                <label class="form-label">LDL (< 130)</label>
+                                <input type="number" id="ldl" class="form-input check-range" data-type="ldl" placeholder="ไขมันเลว">
+                            </div>
+                        </div>
+                        <div id="alert-cvd" class="mt-3 text-sm text-red-600 hidden bg-red-50 p-2 rounded border border-red-200">
+                            <i class="fa-solid fa-heart-pulse"></i> <strong>แจ้งเตือน:</strong> ผู้ป่วยมีความเสี่ยงโรคหัวใจ/หลอดเลือด (LDL > 160)
+                        </div>
+                    </div>
+
+                    <!-- Section: Kidney Function -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                        <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-solid fa-kidneys mr-2"></i>การทำงานของไต (Kidney Function)</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label">BUN (10 - 20)</label>
+                                <input type="number" id="bun" step="0.1" class="form-input check-range" data-type="bun" placeholder="BUN">
+                            </div>
+                            <div>
+                                <label class="form-label">Creatinine (0.6 - 1.2)</label>
+                                <input type="number" id="cr" step="0.01" class="form-input check-range" data-type="cr" placeholder="Cr" oninput="calculateEGFR()">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="form-label">eGFR (สูตร CKD-EPI)</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" id="egfr" readonly class="form-input bg-slate-100 font-bold" placeholder="คำนวณอัตโนมัติ">
+                                    <span class="text-sm text-slate-500 whitespace-nowrap">mL/min/1.73m²</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="alert-ckd" class="mt-3 text-sm text-red-600 hidden bg-red-50 p-2 rounded border border-red-200">
+                            <i class="fa-solid fa-triangle-exclamation"></i> <strong>แจ้งเตือน:</strong> เสี่ยงโรคไตเรื้อรัง (eGFR < 60)
+                        </div>
+                    </div>
+
+                    <!-- Section: Liver Function -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                        <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-solid fa-lungs mr-2"></i>การทำงานของตับ (Liver Function)</h2>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="form-label">AST / SGOT (< 40)</label>
+                                <input type="number" id="ast" class="form-input check-range" data-type="ast" placeholder="AST">
+                            </div>
+                            <div>
+                                <label class="form-label">ALT / SGPT (< 40)</label>
+                                <input type="number" id="alt" class="form-input check-range" data-type="alt" placeholder="ALT">
+                            </div>
+                            <div>
+                                <label class="form-label">ALP (44 - 147)</label>
+                                <input type="number" id="alp" class="form-input check-range" data-type="alp" placeholder="ALP">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: CBC -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                        <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-solid fa-vial mr-2"></i>ความสมบูรณ์ของเม็ดเลือด (CBC)</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label">Hb (g/dL)</label>
+                                <input type="number" id="hb" step="0.1" class="form-input check-range" data-type="hb" placeholder="Hemoglobin">
+                            </div>
+                            <div>
+                                <label class="form-label">Hct (%)</label>
+                                <input type="number" id="hct" step="0.1" class="form-input check-range" data-type="hct" placeholder="Hematocrit">
+                            </div>
+                            <div>
+                                <label class="form-label">WBC (cell/mm³)</label>
+                                <input type="number" id="wbc" class="form-input check-range" data-type="wbc" placeholder="เม็ดเลือดขาว">
+                            </div>
+                            <div>
+                                <label class="form-label">Platelet (x10³/uL)</label>
+                                <input type="number" id="platelet" class="form-input check-range" data-type="plt" placeholder="เกล็ดเลือด">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Electrolyte & Uric -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                        <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-solid fa-flask mr-2"></i>เกลือแร่ และ กรดยูริก</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label">Sodium (135-145)</label>
+                                <input type="number" id="na" step="0.1" class="form-input check-range" data-type="na" placeholder="Na">
+                            </div>
+                            <div>
+                                <label class="form-label">Potassium (3.5-5.0)</label>
+                                <input type="number" id="k" step="0.1" class="form-input check-range" data-type="k" placeholder="K">
+                            </div>
+                            <div>
+                                <label class="form-label">Chloride (98-107)</label>
+                                <input type="number" id="cl" step="0.1" class="form-input check-range" data-type="cl" placeholder="Cl">
+                            </div>
+                            <div>
+                                <label class="form-label">Uric Acid (< 7.0)</label>
+                                <input type="number" id="ua" step="0.1" class="form-input check-range" data-type="ua" placeholder="กรดยูริก">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Urinalysis -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                        <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-solid fa-toilet-paper mr-2"></i>ปัสสาวะ (Urinalysis)</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label">Protein</label>
+                                <select id="urine_protein" class="form-input">
+                                    <option value="Negative">Negative (ปกติ)</option>
+                                    <option value="Trace">Trace</option>
+                                    <option value="1+">1+</option>
+                                    <option value="2+">2+</option>
+                                    <option value="3+">3+</option>
+                                    <option value="4+">4+</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Sugar</label>
+                                <select id="urine_sugar" class="form-input">
+                                    <option value="Negative">Negative (ปกติ)</option>
+                                    <option value="Trace">Trace</option>
+                                    <option value="1+">1+</option>
+                                    <option value="2+">2+</option>
+                                    <option value="3+">3+</option>
+                                    <option value="4+">4+</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">RBC (cells/HPF)</label>
+                                <input type="text" id="urine_rbc" class="form-input" placeholder="เช่น 0-1">
+                            </div>
+                            <div>
+                                <label class="form-label">WBC (cells/HPF)</label>
+                                <input type="text" id="urine_wbc" class="form-input" placeholder="เช่น 1-2">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Special Tests -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lab-card">
+                        <h2 class="text-lg font-bold text-blue-800 border-b pb-2 mb-4"><i class="fa-solid fa-microscope mr-2"></i>ผลตรวจพิเศษ (Special Test)</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label">HBsAg (ไวรัสตับ B)</label>
+                                <select id="hbsag" class="form-input">
+                                    <option value="">- เลือก -</option>
+                                    <option value="Negative">Negative</option>
+                                    <option value="Positive" class="text-red-500">Positive</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Anti-HIV</label>
+                                <select id="hiv" class="form-input">
+                                    <option value="">- เลือก -</option>
+                                    <option value="Negative">Negative</option>
+                                    <option value="Positive" class="text-red-500">Positive</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">PSA (มะเร็งต่อมลูกหมาก)</label>
+                                <input type="number" id="psa" step="0.01" class="form-input" placeholder="< 4.0 ng/mL">
+                            </div>
+                            <div>
+                                <label class="form-label">CEA (มะเร็งลำไส้)</label>
+                                <input type="number" id="cea" step="0.01" class="form-input" placeholder="< 5.0 ng/mL">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button Area -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                    <button type="submit" id="btn-submit" class="w-full md:w-1/2 mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 text-xl rounded-xl shadow-lg transition transform hover:scale-105 flex justify-center items-center gap-3">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> บันทึกผล LAB และวิเคราะห์ด้วย AI
+                    </button>
+                    <p class="text-slate-400 mt-3 text-sm">ข้อมูลจะถูกส่งไปประมวลผลสรุปด้วย Gemini AI และบันทึกลง Google Sheets</p>
+                </div>
+            </form>
+        </div>
+
+        <!-- ======================= TAB: DASHBOARD ======================= -->
+        <div id="tab-dashboard" class="hidden">
+            <div class="mb-6 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-blue-900">แดชบอร์ดสรุปผลการตรวจ</h1>
+                    <p class="text-slate-500 mt-1">ภาพรวมสุขภาพของประชาชนในเขตรับผิดชอบ</p>
+                </div>
+                <button onclick="loadDashboardData()" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg transition shadow-sm">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> รีเฟรชข้อมูล
+                </button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 lab-card flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-bold">ผู้ป่วยทั้งหมด (คน)</p>
+                        <h3 class="text-3xl font-black text-slate-800 mt-1" id="stat-total">-</h3>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 text-xl">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500 lab-card flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-bold">กลุ่มเสี่ยงเบาหวาน</p>
+                        <h3 class="text-3xl font-black text-slate-800 mt-1" id="stat-dm">-</h3>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-xl">
+                        <i class="fa-solid fa-cubes-stacked"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500 lab-card flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-bold">กลุ่มเสี่ยงไขมันสูง</p>
+                        <h3 class="text-3xl font-black text-slate-800 mt-1" id="stat-cvd">-</h3>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 text-xl">
+                        <i class="fa-solid fa-droplet"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-500 lab-card flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-bold">กลุ่มเสี่ยงโรคไต</p>
+                        <h3 class="text-3xl font-black text-slate-800 mt-1" id="stat-ckd">-</h3>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 text-xl">
+                        <i class="fa-solid fa-kidneys"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4 text-center">สัดส่วนความเสี่ยงทางสุขภาพ</h3>
+                    <div class="h-64 flex justify-center">
+                        <canvas id="riskChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4 text-center">สัดส่วนเพศของผู้เข้ารับบริการ</h3>
+                    <div class="h-64 flex justify-center">
+                        <canvas id="sexChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Data Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-slate-700"><i class="fa-solid fa-clock-rotate-left mr-2"></i>ประวัติการตรวจล่าสุด</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 text-sm">
+                                <th class="py-3 px-4 border-b font-semibold">วันที่</th>
+                                <th class="py-3 px-4 border-b font-semibold">ชื่อ-สกุล</th>
+                                <th class="py-3 px-4 border-b font-semibold">อายุ</th>
+                                <th class="py-3 px-4 border-b font-semibold text-center">FBS</th>
+                                <th class="py-3 px-4 border-b font-semibold text-center">LDL</th>
+                                <th class="py-3 px-4 border-b font-semibold text-center">eGFR</th>
+                                <th class="py-3 px-4 border-b font-semibold">AI สรุปผล</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="text-sm">
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-slate-500">
+                                    <i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลดข้อมูล...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= TAB: AI ANALYSIS ======================= -->
+        <div id="tab-ai" class="hidden">
+            <div class="mb-6 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-blue-900">AI วิเคราะห์ผลรายบุคคล</h1>
+                    <p class="text-slate-500 mt-1">เลือกผู้ป่วยจากประวัติล่าสุดเพื่อวิเคราะห์สุขภาพเชิงลึกด้วย Gemini AI</p>
+                </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
+                <label class="form-label mb-2">เลือกรายชื่อผู้ป่วย (จากประวัติล่าสุด)</label>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <select id="ai-patient-select" class="form-input flex-1" onchange="displaySelectedPatient()">
+                        <option value="">-- กรุณาเลือกรายชื่อ --</option>
+                    </select>
+                    <button onclick="analyzeIndividualWithAI()" id="btn-ai-analyze" class="bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-bold py-2 px-6 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> วิเคราะห์ผล
+                    </button>
+                </div>
+            </div>
+
+            <!-- Patient Info Display -->
+            <div id="ai-patient-info" class="hidden bg-slate-50 p-6 rounded-xl border border-slate-200 mb-6">
+                <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2"><i class="fa-solid fa-user-check mr-2"></i>ข้อมูลที่ใช้ในการวิเคราะห์</h3>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm" id="ai-patient-data-grid">
+                    <!-- Data injected here -->
+                </div>
+            </div>
+
+            <!-- AI Result Display inside Tab -->
+            <div id="ai-individual-result" class="hidden bg-white p-6 rounded-xl shadow-sm border border-blue-200">
+                <h3 class="text-xl font-bold text-blue-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-robot"></i> ผลการวิเคราะห์จาก AI</h3>
+                <div class="prose max-w-none text-slate-700 leading-relaxed bg-blue-50/30 p-4 rounded-lg" id="ai-individual-content"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- AI Result Modal -->
+    <div id="aiModal" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col transform transition-all">
+            <div class="bg-gradient-to-r from-blue-600 to-teal-500 p-5 text-white flex justify-between items-center">
+                <h3 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-robot"></i> AI Health Summary</h3>
+                <button onclick="closeAiModal()" class="text-white hover:text-red-200 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto" id="aiResultContent">
+                <!-- Content will be injected here -->
+            </div>
+            <div class="p-4 border-t bg-slate-50 text-right">
+                <button onclick="closeAiModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-6 rounded-lg transition">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // การตั้งค่าระบบ (Configuration)
+        // ==========================================
+        
+        // URL ของ Google Apps Script Web App (ได้จากการ Deploy)
+        // ** สำคัญ: ต้องเปลี่ยนเป็น URL ของคุณเอง **
+        let SCRIPT_URL = localStorage.getItem('LAB_APP_SCRIPT_URL') || ''; 
+
+        // ค่าปกติของ LAB สำหรับตรวจสอบและใส่สี
+        const LAB_RANGES = {
+            fbs: { min: 70, max: 99, risk: 125 }, // > 125 คือ DM
+            hba1c: { min: 4.0, max: 5.6, risk: 6.4 }, // > 6.4 คือ DM
+            chol: { min: 0, max: 199, risk: 239 },
+            tg: { min: 0, max: 149, risk: 199 },
+            ldl: { min: 0, max: 129, risk: 159 }, // > 159 คือ High Risk
+            hdl: { min: 40, max: 100, risk: 40 }, // น้อยกว่า 40 ถือว่าเสี่ยง (เอาแบบง่าย)
+            bun: { min: 10, max: 20, risk: 25 },
+            cr: { min: 0.6, max: 1.2, risk: 1.5 },
+            ast: { min: 0, max: 40, risk: 50 },
+            alt: { min: 0, max: 40, risk: 50 },
+            alp: { min: 44, max: 147, risk: 150 },
+            hb: { min: 12.0, max: 16.0, risk: 11.0 }, // ค่ากลางๆ
+            hct: { min: 36.0, max: 48.0, risk: 35.0 },
+            wbc: { min: 4000, max: 10000, risk: 11000 },
+            plt: { min: 150, max: 400, risk: 140 },
+            na: { min: 135, max: 145, risk: 130 },
+            k: { min: 3.5, max: 5.0, risk: 3.0 },
+            cl: { min: 98, max: 107, risk: 90 },
+            ua: { min: 0, max: 7.0, risk: 8.0 }
+        };
+
+        // กราฟ Instances
+        let chartInstances = {};
+
+        // ข้อมูลผู้ป่วยล่าสุด
+        let recentPatients = [];
+
+        // ==========================================
+        // การจัดการ UI และแท็บ (UI Management)
+        // ==========================================
+        function switchTab(tabId) {
+            document.getElementById('tab-form').classList.add('hidden');
+            document.getElementById('tab-dashboard').classList.add('hidden');
+            document.getElementById('tab-ai').classList.add('hidden');
+
+            document.getElementById('btn-tab-form').className = 'px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium text-blue-100';
+            document.getElementById('btn-tab-dashboard').className = 'px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium text-blue-100';
+            document.getElementById('btn-tab-ai').className = 'px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium text-blue-100';
+            
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`btn-tab-${tabId}`).className = 'px-4 py-2 rounded-lg bg-blue-700 font-semibold transition hover:bg-blue-800 text-white';
+
+            if(tabId === 'dashboard') {
+                loadDashboardData();
+            } else if (tabId === 'ai') {
+                // อัปเดตรายชื่อเสมอเมื่อเข้าแท็บ AI
+                if(recentPatients.length === 0) loadDashboardData();
+                else updatePatientSelect();
+            }
+        }
+
+        // แจ้งให้ตั้งค่า URL หากยังไม่มี
+        window.onload = () => {
+            if(!SCRIPT_URL) {
+                setTimeout(() => {
+                    setApiUrl(true);
+                }, 1000);
+            }
+            setupRealtimeValidation();
+        };
+
+        function setApiUrl(isFirstTime = false) {
+            Swal.fire({
+                title: 'ตั้งค่าการเชื่อมต่อ (API URL)',
+                text: 'กรุณาใส่ URL ของ Google Apps Script Web App ที่ได้จากการ Deploy',
+                input: 'url',
+                inputPlaceholder: 'https://script.google.com/macros/s/XXX/exec',
+                inputValue: SCRIPT_URL,
+                showCancelButton: !isFirstTime,
+                confirmButtonText: 'บันทึก',
+                cancelButtonText: 'ยกเลิก',
+                allowOutsideClick: !isFirstTime
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    SCRIPT_URL = result.value;
+                    localStorage.setItem('LAB_APP_SCRIPT_URL', SCRIPT_URL);
+                    Swal.fire('บันทึกสำเร็จ!', 'เชื่อมต่อระบบพร้อมใช้งาน', 'success');
+                }
+            });
+        }
+
+        // ==========================================
+        // การคำนวณอัตโนมัติ (Auto Calculations)
+        // ==========================================
+        function calculateBMI() {
+            const w = parseFloat(document.getElementById('weight').value);
+            const h = parseFloat(document.getElementById('height').value) / 100; // แปลงซม.เป็นเมตร
+            
+            if (w > 0 && h > 0) {
+                const bmi = (w / (h * h)).toFixed(2);
+                document.getElementById('bmi').value = bmi;
+                
+                let bmiEl = document.getElementById('bmi');
+                bmiEl.classList.remove('status-normal', 'status-high', 'status-low');
+                if(bmi >= 25) bmiEl.classList.add('status-high');
+                else if(bmi >= 18.5) bmiEl.classList.add('status-normal');
+                else bmiEl.classList.add('status-low');
+            } else {
+                document.getElementById('bmi').value = '';
+                document.getElementById('bmi').classList.remove('status-normal', 'status-high', 'status-low');
+            }
+        }
+
+        // สูตร CKD-EPI 2021 (ไม่ต้องใช้เชื้อชาติ)
+        function calculateEGFR() {
+            const cr = parseFloat(document.getElementById('cr').value);
+            const age = parseInt(document.getElementById('age').value);
+            const sex = document.getElementById('sex').value;
+
+            if (!cr || !age || !sex) {
+                document.getElementById('egfr').value = '';
+                checkSmartAlerts();
+                return;
+            }
+
+            let kappa = sex === 'Female' ? 0.7 : 0.9;
+            let alpha = sex === 'Female' ? -0.241 : -0.302;
+            if (sex === 'Female' && cr > 0.7) alpha = -1.200;
+            if (sex === 'Male' && cr > 0.9) alpha = -1.200;
+            let multiplier = sex === 'Female' ? 1.012 : 1;
+
+            let minRatio = Math.min(cr / kappa, 1);
+            let maxRatio = Math.max(cr / kappa, 1);
+            
+            // eGFR = 142 * min(Scr/κ, 1)^α * max(Scr/κ, 1)^-1.200 * 0.9938^Age * 1.012 [if female]
+            let egfr = 142 * Math.pow(minRatio, alpha) * Math.pow(maxRatio, -1.200) * Math.pow(0.9938, age) * multiplier;
+            
+            const egfrValue = egfr.toFixed(2);
+            let egfrEl = document.getElementById('egfr');
+            egfrEl.value = egfrValue;
+
+            egfrEl.classList.remove('status-normal', 'status-low', 'status-high');
+            if (egfr >= 90) egfrEl.classList.add('status-normal');
+            else if (egfr >= 60) egfrEl.classList.add('status-low'); // Yellow
+            else egfrEl.classList.add('status-high'); // Red (CKD < 60)
+
+            checkSmartAlerts();
+        }
+
+        // ==========================================
+        // การตรวจสอบและใส่สี (Validation & Color Coding)
+        // ==========================================
+        function setupRealtimeValidation() {
+            const inputs = document.querySelectorAll('.check-range');
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    const type = this.getAttribute('data-type');
+                    const val = parseFloat(this.value);
+                    const rules = LAB_RANGES[type];
+
+                    this.classList.remove('status-normal', 'status-high', 'status-low');
+
+                    if (!isNaN(val) && rules) {
+                        // เช็คตาม Range
+                        if (val > rules.risk || val < rules.min) {
+                            this.classList.add('status-high');
+                        } else if (val > rules.max) {
+                            this.classList.add('status-low'); // เหลือง (ปริ่มๆ)
+                        } else {
+                            this.classList.add('status-normal'); // เขียว
+                        }
+                    }
+                    checkSmartAlerts();
+                });
+            });
+        }
+
+        function checkSmartAlerts() {
+            const fbs = parseFloat(document.getElementById('fbs').value);
+            const hba1c = parseFloat(document.getElementById('hba1c').value);
+            const ldl = parseFloat(document.getElementById('ldl').value);
+            const egfr = parseFloat(document.getElementById('egfr').value);
+
+            // เบาหวาน
+            if ((fbs >= 126) || (hba1c >= 6.5)) {
+                document.getElementById('alert-dm').classList.remove('hidden');
+            } else {
+                document.getElementById('alert-dm').classList.add('hidden');
+            }
+
+            // ไขมัน/หัวใจ
+            if (ldl > 160) {
+                document.getElementById('alert-cvd').classList.remove('hidden');
+            } else {
+                document.getElementById('alert-cvd').classList.add('hidden');
+            }
+
+            // ไต
+            if (egfr > 0 && egfr < 60) {
+                document.getElementById('alert-ckd').classList.remove('hidden');
+            } else {
+                document.getElementById('alert-ckd').classList.add('hidden');
+            }
+        }
+
+        // ==========================================
+        // การบันทึกข้อมูลและคุยกับ API (Submit Data)
+        // ==========================================
+        function submitForm(e) {
+            e.preventDefault();
+            
+            if(!SCRIPT_URL) {
+                Swal.fire('ข้อผิดพลาด', 'กรุณาตั้งค่า API URL ก่อนบันทึกข้อมูล', 'error');
+                return;
+            }
+
+            // รวบรวมข้อมูล
+            const payload = {
+                action: "saveData",
+                data: {
+                    hn: document.getElementById('hn').value,
+                    name: document.getElementById('name').value,
+                    sex: document.getElementById('sex').value,
+                    age: document.getElementById('age').value,
+                    weight: document.getElementById('weight').value,
+                    height: document.getElementById('height').value,
+                    bmi: document.getElementById('bmi').value,
+                    fbs: document.getElementById('fbs').value,
+                    hba1c: document.getElementById('hba1c').value,
+                    chol: document.getElementById('cholesterol').value,
+                    tg: document.getElementById('tg').value,
+                    hdl: document.getElementById('hdl').value,
+                    ldl: document.getElementById('ldl').value,
+                    bun: document.getElementById('bun').value,
+                    cr: document.getElementById('cr').value,
+                    egfr: document.getElementById('egfr').value,
+                    ast: document.getElementById('ast').value,
+                    alt: document.getElementById('alt').value,
+                    alp: document.getElementById('alp').value,
+                    hb: document.getElementById('hb').value,
+                    hct: document.getElementById('hct').value,
+                    wbc: document.getElementById('wbc').value,
+                    plt: document.getElementById('platelet').value,
+                    na: document.getElementById('na').value,
+                    k: document.getElementById('k').value,
+                    cl: document.getElementById('cl').value,
+                    ua: document.getElementById('ua').value,
+                    urine_protein: document.getElementById('urine_protein').value,
+                    urine_sugar: document.getElementById('urine_sugar').value,
+                    urine_rbc: document.getElementById('urine_rbc').value,
+                    urine_wbc: document.getElementById('urine_wbc').value,
+                    hbsag: document.getElementById('hbsag').value,
+                    hiv: document.getElementById('hiv').value,
+                    psa: document.getElementById('psa').value,
+                    cea: document.getElementById('cea').value
+                }
+            };
+
+            // แสดง Loading
+            const btn = document.getElementById('btn-submit');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังวิเคราะห์และบันทึกข้อมูล...';
+            btn.disabled = true;
+
+            // ส่งข้อมูลไปยัง Google Apps Script (ส่งเป็น Text/plain เพื่อเลี่ยงปัญหา CORS Preflight ใน GAS)
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if(result.status === 'success') {
+                    // แสดง AI Summary
+                    showAiResult(result.aiSummary, payload.data.name);
+                    clearForm();
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกสำเร็จ',
+                        text: 'ข้อมูลถูกบันทึกลง Google Sheets แล้ว',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    throw new Error(result.message || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message, 'error');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('labForm').reset();
+            const coloredInputs = document.querySelectorAll('.status-normal, .status-high, .status-low');
+            coloredInputs.forEach(el => {
+                el.classList.remove('status-normal', 'status-high', 'status-low');
+            });
+            checkSmartAlerts();
+        }
+
+        // ==========================================
+        // แสดงผล AI Summary Modal
+        // ==========================================
+        function showAiResult(markdownText, patientName) {
+            const content = document.getElementById('aiResultContent');
+            
+            // เปลี่ยน Markdown พื้นฐานเป็น HTML สำหรับแสดงผล
+            let htmlText = markdownText
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n\n/g, '</p><p class="mb-3">')
+                .replace(/\n/g, '<br>')
+                .replace(/- /g, '&bull; ');
+            
+            content.innerHTML = `
+                <div class="mb-4 text-center">
+                    <span class="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold mb-2">สรุปผลสำหรับ: ${patientName}</span>
+                </div>
+                <div class="prose max-w-none text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-inner text-base">
+                    <p class="mb-3">${htmlText}</p>
+                </div>
+            `;
+            document.getElementById('aiModal').classList.remove('hidden');
+        }
+
+        function closeAiModal() {
+            document.getElementById('aiModal').classList.add('hidden');
+        }
+
+        // ==========================================
+        // แดชบอร์ด (Dashboard Logic)
+        // ==========================================
+        function loadDashboardData() {
+            if(!SCRIPT_URL) return;
+
+            document.getElementById('table-body').innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลดข้อมูล...</td></tr>`;
+
+            // ดึงข้อมูลผ่าน GET request
+            fetch(SCRIPT_URL + "?action=getDashboard")
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    renderDashboard(data.data);
+                }
+            })
+            .catch(err => {
+                console.error("Dashboard Error:", err);
+                document.getElementById('table-body').innerHTML = `<tr><td colspan="7" class="py-8 text-center text-red-500">โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ</td></tr>`;
+            });
+        }
+
+        function renderDashboard(data) {
+            // Update Stats
+            document.getElementById('stat-total').innerText = data.stats.total;
+            document.getElementById('stat-dm').innerText = data.stats.dmRisk;
+            document.getElementById('stat-cvd').innerText = data.stats.cvdRisk;
+            document.getElementById('stat-ckd').innerText = data.stats.ckdRisk;
+
+            // Update Recent Patients Array
+            recentPatients = data.recent || [];
+            updatePatientSelect();
+
+            // Render Table
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            if(data.recent.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">ยังไม่มีข้อมูล</td></tr>`;
+            } else {
+                data.recent.forEach(row => {
+                    // กำหนดสีข้อความในตารางตามความเสี่ยง
+                    const fbsClass = row.fbs >= 126 ? 'text-red-600 font-bold' : (row.fbs >= 100 ? 'text-yellow-600 font-bold' : 'text-green-600');
+                    const ldlClass = row.ldl > 160 ? 'text-red-600 font-bold' : (row.ldl > 130 ? 'text-yellow-600 font-bold' : 'text-green-600');
+                    const egfrClass = row.egfr < 60 ? 'text-red-600 font-bold' : 'text-green-600';
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b hover:bg-slate-50 transition';
+                    tr.innerHTML = `
+                        <td class="py-3 px-4">${new Date(row.date).toLocaleDateString('th-TH')}</td>
+                        <td class="py-3 px-4 font-medium">${row.name}</td>
+                        <td class="py-3 px-4">${row.age}</td>
+                        <td class="py-3 px-4 text-center ${fbsClass}">${row.fbs || '-'}</td>
+                        <td class="py-3 px-4 text-center ${ldlClass}">${row.ldl || '-'}</td>
+                        <td class="py-3 px-4 text-center ${egfrClass}">${row.egfr || '-'}</td>
+                        <td class="py-3 px-4">
+                            <button onclick='showAiResult(${JSON.stringify(row.aiSummary)}, "${row.name}")' class="text-blue-600 hover:text-blue-800 text-sm bg-blue-50 px-2 py-1 rounded">
+                                <i class="fa-solid fa-eye"></i> ดูสรุป
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Render Charts
+            renderCharts(data.stats);
+        }
+
+        // ==========================================
+        // เมนู AI วิเคราะห์ผลรายบุคคล (Individual AI Analysis)
+        // ==========================================
+        function updatePatientSelect() {
+            const select = document.getElementById('ai-patient-select');
+            if(!select) return;
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">-- กรุณาเลือกรายชื่อ --</option>';
+            
+            recentPatients.forEach((p, index) => {
+                select.innerHTML += `<option value="${index}">${p.name} (ตรวจเมื่อ ${new Date(p.date).toLocaleDateString('th-TH')})</option>`;
+            });
+            
+            if (currentValue && recentPatients[currentValue]) {
+                select.value = currentValue;
+            }
+        }
+
+        function displaySelectedPatient() {
+            const select = document.getElementById('ai-patient-select');
+            const btn = document.getElementById('btn-ai-analyze');
+            const infoDiv = document.getElementById('ai-patient-info');
+            const grid = document.getElementById('ai-patient-data-grid');
+            const resultDiv = document.getElementById('ai-individual-result');
+            
+            resultDiv.classList.add('hidden'); // ซ่อนผลลัพธ์เก่า
+            
+            if(select.value === "") {
+                btn.disabled = true;
+                infoDiv.classList.add('hidden');
+                return;
+            }
+            
+            btn.disabled = false;
+            infoDiv.classList.remove('hidden');
+            
+            const p = recentPatients[select.value];
+            grid.innerHTML = `
+                <div><span class="text-slate-500">ชื่อ-สกุล:</span> <br><strong class="text-slate-800">${p.name}</strong></div>
+                <div><span class="text-slate-500">อายุ:</span> <br><strong class="text-slate-800">${p.age} ปี</strong></div>
+                <div><span class="text-slate-500">FBS (น้ำตาล):</span> <br><strong class="text-slate-800 ${p.fbs >= 126 ? 'text-red-600' : ''}">${p.fbs || '-'}</strong></div>
+                <div><span class="text-slate-500">LDL (ไขมันเลว):</span> <br><strong class="text-slate-800 ${p.ldl > 160 ? 'text-red-600' : ''}">${p.ldl || '-'}</strong></div>
+                <div><span class="text-slate-500">eGFR (การทำงานไต):</span> <br><strong class="text-slate-800 ${p.egfr < 60 ? 'text-red-600' : ''}">${p.egfr || '-'}</strong></div>
+            `;
+        }
+
+        async function analyzeIndividualWithAI() {
+            const select = document.getElementById('ai-patient-select');
+            if(select.value === "") return;
+            
+            const p = recentPatients[select.value];
+            const apiKey = "AIzaSyAJowH2YrcSi7rQBKZNdypiO_YYVA2Ho5g";
+            const btn = document.getElementById('btn-ai-analyze');
+            const resultDiv = document.getElementById('ai-individual-result');
+            const contentDiv = document.getElementById('ai-individual-content');
+            
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังวิเคราะห์...';
+            btn.disabled = true;
+            
+            const prompt = `คุณคือแพทย์ผู้เชี่ยวชาญด้านเวชศาสตร์ครอบครัวและระบบสาธารณสุขปฐมภูมิ
+ช่วยวิเคราะห์และสรุปผลตรวจสุขภาพ (LAB) ของผู้ป่วยรายนี้ ด้วยภาษาไทยที่อ่านเข้าใจง่าย กระชับ เหมาะสำหรับเจ้าหน้าที่ รพ.สต. หรือ อสม. นำไปแนะนำผู้ป่วยต่อ
+
+ข้อมูลผู้ป่วย: ชื่อ ${p.name}, อายุ: ${p.age} ปี
+ผลการตรวจทางห้องปฏิบัติการ:
+FBS (น้ำตาลในเลือด): ${p.fbs || '-'} mg/dL
+LDL (ไขมันในเลือด): ${p.ldl || '-'} mg/dL
+eGFR (การทำงานของไต): ${p.egfr || '-'} mL/min/1.73m²
+
+กรุณาสรุปโดยแยกหัวข้อตามนี้เท่านั้น:
+1. ภาพรวมสุขภาพ: (ดี/ปกติ/มีความเสี่ยงเรื่องอะไรบ้าง)
+2. ความเสี่ยงที่พบ (ถ้ามี): (อธิบายค่าที่ผิดปกติ)
+3. แนวทางการดูแลรักษา: (การประเมินเบื้องต้น, ความจำเป็นในการพบแพทย์)
+4. การส่งเสริมสุขภาพและคำแนะนำ: (แนะนำเรื่องอาหาร, ออกกำลังกาย แบบเจาะจงกับผลเลือด)
+
+ตอบกลับเป็นรูปแบบ Markdown ให้อ่านง่าย`;
+
+            // ระบบหมุน Model 
+            const models = [
+                "gemini-3-pro",
+                "gemini-3-flash",
+                "gemini-3-flash-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-1.5-pro",
+                "gemini-1.5-flash"
+            ];
+            
+            let success = false;
+            let lastError = "";
+
+            for (const model of models) {
+                if (success) break;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { temperature: 0.2 }
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if(response.ok && data.candidates && data.candidates[0].content.parts[0].text) {
+                        const markdownText = data.candidates[0].content.parts[0].text;
+                        let htmlText = markdownText
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                            .replace(/\n\n/g, '</p><p class="mb-3">')
+                            .replace(/\n/g, '<br>')
+                            .replace(/- /g, '&bull; ');
+                        
+                        contentDiv.innerHTML = `<div class="mb-4 text-sm text-teal-600 font-semibold border-b pb-2"><i class="fa-solid fa-microchip mr-1"></i> วิเคราะห์สำเร็จด้วยโมเดล: ${model}</div><p class="mb-3 text-base">${htmlText}</p>`;
+                        resultDiv.classList.remove('hidden');
+                        success = true;
+                    } else {
+                        lastError = data.error?.message || "Response ไม่ถูกต้อง";
+                    }
+                } catch (error) {
+                    lastError = error.message;
+                }
+            }
+
+            if (!success) {
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถให้ AI วิเคราะห์ผลได้: ' + lastError, 'error');
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        function renderCharts(stats) {
+            // Destroy old instances to prevent overlay
+            if(chartInstances.riskChart) chartInstances.riskChart.destroy();
+            if(chartInstances.sexChart) chartInstances.sexChart.destroy();
+
+            // Chart 1: Risk Proportions (Bar Chart)
+            const ctxRisk = document.getElementById('riskChart').getContext('2d');
+            chartInstances.riskChart = new Chart(ctxRisk, {
+                type: 'bar',
+                data: {
+                    labels: ['เสี่ยงเบาหวาน', 'เสี่ยงไขมันสูง', 'เสี่ยงโรคไต'],
+                    datasets: [{
+                        label: 'จำนวนคน',
+                        data: [stats.dmRisk, stats.cvdRisk, stats.ckdRisk],
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.7)',  // Red
+                            'rgba(249, 115, 22, 0.7)', // Orange
+                            'rgba(234, 179, 8, 0.7)'   // Yellow
+                        ],
+                        borderColor: [
+                            'rgb(239, 68, 68)',
+                            'rgb(249, 115, 22)',
+                            'rgb(234, 179, 8)'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Chart 2: Sex Ratio (Doughnut Chart)
+            const ctxSex = document.getElementById('sexChart').getContext('2d');
+            chartInstances.sexChart = new Chart(ctxSex, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ชาย', 'หญิง'],
+                    datasets: [{
+                        data: [stats.maleCount, stats.femaleCount],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)', // Blue
+                            'rgba(236, 72, 153, 0.8)'  // Pink
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
