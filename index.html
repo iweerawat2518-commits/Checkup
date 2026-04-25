@@ -84,10 +84,6 @@
                     <button onclick="switchTab('ai')" id="btn-tab-ai" class="px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium text-blue-100">
                         <i class="fa-solid fa-robot mr-1"></i> AI วิเคราะห์
                     </button>
-                    <!-- ปุ่มตั้งค่า API URL -->
-                    <button onclick="setApiUrl()" class="px-3 py-2 rounded-lg hover:bg-blue-700 transition text-blue-200" title="ตั้งค่าการเชื่อมต่อ">
-                        <i class="fa-solid fa-gear"></i>
-                    </button>
                 </div>
             </div>
         </div>
@@ -522,8 +518,8 @@
         // ==========================================
         
         // URL ของ Google Apps Script Web App (ได้จากการ Deploy)
-        // ** สำคัญ: ต้องเปลี่ยนเป็น URL ของคุณเอง **
-        let SCRIPT_URL = localStorage.getItem('LAB_APP_SCRIPT_URL') || ''; 
+        // ** สำคัญ: นำ URL ที่ได้จากการ Deploy มาวางที่นี่ครั้งเดียวเสร็จ **
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKEp3ginuz3ytuqyC2bv2mvhIex7mZoaF6BAEcbHTtB_xexvwqYnobFHZJTVYFQsXZTg/exec';
 
         // ค่าปกติของ LAB สำหรับตรวจสอบและใส่สี
         const LAB_RANGES = {
@@ -578,35 +574,10 @@
             }
         }
 
-        // แจ้งให้ตั้งค่า URL หากยังไม่มี
+        // เมื่อโหลดหน้าเว็บเสร็จ
         window.onload = () => {
-            if(!SCRIPT_URL) {
-                setTimeout(() => {
-                    setApiUrl(true);
-                }, 1000);
-            }
             setupRealtimeValidation();
         };
-
-        function setApiUrl(isFirstTime = false) {
-            Swal.fire({
-                title: 'ตั้งค่าการเชื่อมต่อ (API URL)',
-                text: 'กรุณาใส่ URL ของ Google Apps Script Web App ที่ได้จากการ Deploy',
-                input: 'url',
-                inputPlaceholder: 'https://script.google.com/macros/s/XXX/exec',
-                inputValue: SCRIPT_URL,
-                showCancelButton: !isFirstTime,
-                confirmButtonText: 'บันทึก',
-                cancelButtonText: 'ยกเลิก',
-                allowOutsideClick: !isFirstTime
-            }).then((result) => {
-                if (result.isConfirmed && result.value) {
-                    SCRIPT_URL = result.value;
-                    localStorage.setItem('LAB_APP_SCRIPT_URL', SCRIPT_URL);
-                    Swal.fire('บันทึกสำเร็จ!', 'เชื่อมต่อระบบพร้อมใช้งาน', 'success');
-                }
-            });
-        }
 
         // ==========================================
         // การคำนวณอัตโนมัติ (Auto Calculations)
@@ -728,8 +699,8 @@
         function submitForm(e) {
             e.preventDefault();
             
-            if(!SCRIPT_URL) {
-                Swal.fire('ข้อผิดพลาด', 'กรุณาตั้งค่า API URL ก่อนบันทึกข้อมูล', 'error');
+            if(!SCRIPT_URL || SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+                Swal.fire('ข้อผิดพลาด', 'กรุณานำ URL ของ Google Apps Script มาใส่ในตัวแปร SCRIPT_URL ในโค้ดก่อนใช้งาน', 'error');
                 return;
             }
 
@@ -856,7 +827,7 @@
         // แดชบอร์ด (Dashboard Logic)
         // ==========================================
         function loadDashboardData() {
-            if(!SCRIPT_URL) return;
+            if(!SCRIPT_URL || SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') return;
 
             document.getElementById('table-body').innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลดข้อมูล...</td></tr>`;
 
