@@ -943,7 +943,8 @@
             if(select.value === "") return;
             
             const p = recentPatients[select.value];
-            const apiKey = "AIzaSyAJowH2YrcSi7rQBKZNdypiO_YYVA2Ho5g";
+            // ใช้ค่าว่างเพื่อให้ระบบ Preview รันได้อัตโนมัติ (หากนำไปรันข้างนอก สามารถใส่ Key เดิมของคุณได้ครับ)
+            const apiKey = ""; 
             const btn = document.getElementById('btn-ai-analyze');
             const resultDiv = document.getElementById('ai-individual-result');
             const contentDiv = document.getElementById('ai-individual-content');
@@ -969,16 +970,21 @@ eGFR (การทำงานของไต): ${p.egfr || '-'} mL/min/1.73m²
 
 ตอบกลับเป็นรูปแบบ Markdown ให้อ่านง่าย`;
 
-            // ระบบหมุน Model 
+            // ระบบหมุน Model (เพิ่มโมเดลที่ระบบ Preview รองรับ)
             const models = [
                 "gemini-3-pro",
                 "gemini-3-flash",
                 "gemini-3-flash-preview",
                 "gemini-2.5-pro",
                 "gemini-2.5-flash",
+                "gemini-2.5-flash-preview-09-2025",
                 "gemini-2.5-flash-lite",
+                "gemini-1.5-pro-latest",
+                "gemini-1.5-flash-latest",
                 "gemini-1.5-pro",
-                "gemini-1.5-flash"
+                "gemini-1.5-flash",
+                "gemini-1.0-pro",
+                "gemini-pro"
             ];
             
             let success = false;
@@ -999,9 +1005,11 @@ eGFR (การทำงานของไต): ${p.egfr || '-'} mL/min/1.73m²
                     });
                     
                     const data = await response.json();
+                    // ตรวจสอบค่าผลลัพธ์อย่างปลอดภัย ป้องกัน error เมื่อค่าว่าง
+                    const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
                     
-                    if(response.ok && data.candidates && data.candidates[0].content.parts[0].text) {
-                        const markdownText = data.candidates[0].content.parts[0].text;
+                    if(response.ok && textResult) {
+                        const markdownText = textResult;
                         let htmlText = markdownText
                             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                             .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -1013,7 +1021,7 @@ eGFR (การทำงานของไต): ${p.egfr || '-'} mL/min/1.73m²
                         resultDiv.classList.remove('hidden');
                         success = true;
                     } else {
-                        lastError = data.error?.message || "Response ไม่ถูกต้อง";
+                        lastError = data.error?.message || "Response ไม่ถูกต้อง หรือ Model ปฏิเสธการตอบกลับ";
                     }
                 } catch (error) {
                     lastError = error.message;
